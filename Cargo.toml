@@ -1,6 +1,6 @@
 [package]
-name = "wasm_fdw_example"
-version = "0.1.0"
+name = "github_fdw_quickstart"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -15,7 +15,7 @@ wit-bindgen-rt = "0.26.0"
 serde_json = "1.0"
 
 [package.metadata.component]
-package = "my-company:example-fdw"
+package = "my-company:github-fdw-quickstart"
 
 [package.metadata.component.target]
 path = "wit"
