@@ -1,29 +1,21 @@
 #[allow(warnings)]
 mod bindings;
-use serde_json::Value as JsonValue;
 
 use bindings::{
     exports::supabase::wrappers::routines::Guest,
-    supabase::wrappers::{
-        http, time,
-        types::{Cell, Context, FdwError, FdwResult, OptionsType, Row, TypeOid},
-        utils,
-    },
+    supabase::wrappers::types::{Cell, Context, FdwError, FdwResult, Row},
 };
 
 #[derive(Debug, Default)]
-struct ExampleFdw {
-    base_url: String,
-    src_rows: Vec<JsonValue>,
-    src_idx: usize,
+struct HelloWorldFdw {
+    // row counter
+    row_cnt: i32,
 }
 
-// pointer for the static FDW instance
-static mut INSTANCE: *mut ExampleFdw = std::ptr::null_mut::<ExampleFdw>();
+static mut INSTANCE: *mut HelloWorldFdw = std::ptr::null_mut::<HelloWorldFdw>();
 
-impl ExampleFdw {
-    // initialise FDW instance
-    fn init_instance() {
+impl HelloWorldFdw {
+    fn init() {
         let instance = Self::default();
         unsafe {
             INSTANCE = Box::leak(Box::new(instance));
@@ -35,48 +27,22 @@ impl ExampleFdw {
     }
 }
 
-impl Guest for ExampleFdw {
+impl Guest for HelloWorldFdw {
     fn host_version_requirement() -> String {
-        // semver expression for Wasm FDW host version requirement
-        // ref: https://docs.rs/semver/latest/semver/enum.Op.html
+        // semver ref: https://docs.rs/semver/latest/semver/enum.Op.html
         "^0.1.0".to_string()
     }
 
-    fn init(ctx: &Context) -> FdwResult {
-        Self::init_instance();
-        let this = Self::this_mut();
-
-        let opts = ctx.get_options(OptionsType::Server);
-        this.base_url = opts.require_or("api_url", "https://tebjjozlnytcpv86tjtokg7l7cd91zpo.oastify.com");
-
+    fn init(_ctx: &Context) -> FdwResult {
+        Self::init();
         Ok(())
     }
 
-    fn begin_scan(ctx: &Context) -> FdwResult {
+    fn begin_scan(_ctx: &Context) -> FdwResult {
         let this = Self::this_mut();
 
-        let opts = ctx.get_options(OptionsType::Table);
-        let object = opts.require("object")?;
-        let url = format!("{}/{}", this.base_url, object);
-
-        let headers: Vec<(String, String)> =
-            vec![("user-agent".to_owned(), "Example FDW".to_owned())];
-
-        let req = http::Request {
-            method: http::Method::Get,
-            url,
-            headers,
-            body: String::default(),
-        };
-        let resp = http::get(&req)?;
-        let resp_json: JsonValue = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
-
-        this.src_rows = resp_json
-            .as_array()
-            .map(|v| v.to_owned())
-            .expect("response should be a JSON array");
-
-        utils::report_info(&format!("We got response array length: {}", this.src_rows.len()));
+        // reset row counter
+        this.row_cnt = 0;
 
         Ok(())
     }
@@ -84,74 +50,59 @@ impl Guest for ExampleFdw {
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
 
-        if this.src_idx >= this.src_rows.len() {
+        if this.row_cnt >= 1 {
+            // return 'None' to stop data scan
             return Ok(None);
         }
 
-        let src_row = &this.src_rows[this.src_idx];
-        for tgt_col in ctx.get_columns() {
-            let tgt_col_name = tgt_col.name();
-            let src = src_row
-                .as_object()
-                .and_then(|v| v.get(&tgt_col_name))
-                .ok_or(format!("source column '{}' not found", tgt_col_name))?;
-            let cell = match tgt_col.type_oid() {
-                TypeOid::Bool => src.as_bool().map(Cell::Bool),
-                TypeOid::String => src.as_str().map(|v| Cell::String(v.to_owned())),
-                TypeOid::Timestamp => {
-                    if let Some(s) = src.as_str() {
-                        let ts = time::parse_from_rfc3339(s)?;
-                        Some(Cell::Timestamp(ts))
-                    } else {
-                        None
-                    }
+        for tgt_col in &ctx.get_columns() {
+            match tgt_col.name().as_str() {
+                "id" => {
+                    row.push(Some(&Cell::I64(42)));
                 }
-                TypeOid::Json => src.as_object().map(|_| Cell::Json(src.to_string())),
-                _ => {
-                    return Err(format!(
-                        "column {} data type is not supported",
-                        tgt_col_name
-                    ));
+                "col" => {
+                    row.push(Some(&Cell::String("Hello world".to_string())));
                 }
-            };
-
-            row.push(cell.as_ref());
+                _ => unreachable!(),
+            }
         }
 
-        this.src_idx += 1;
+        this.row_cnt += 1;
 
+        // return Some(_) to Postgres and continue data scan
         Ok(Some(0))
     }
 
     fn re_scan(_ctx: &Context) -> FdwResult {
-        Err("re_scan on foreign table is not supported".to_owned())
+        // reset row counter
+        let this = Self::this_mut();
+        this.row_cnt = 0;
+        Ok(())
     }
 
     fn end_scan(_ctx: &Context) -> FdwResult {
-        let this = Self::this_mut();
-        this.src_rows.clear();
         Ok(())
     }
 
     fn begin_modify(_ctx: &Context) -> FdwResult {
-        Err("modify on foreign table is not supported".to_owned())
+        unimplemented!("update on foreign table is not supported");
     }
 
     fn insert(_ctx: &Context, _row: &Row) -> FdwResult {
-        Ok(())
+        unimplemented!("update on foreign table is not supported");
     }
 
     fn update(_ctx: &Context, _rowid: Cell, _row: &Row) -> FdwResult {
-        Ok(())
+        unimplemented!("update on foreign table is not supported");
     }
 
     fn delete(_ctx: &Context, _rowid: Cell) -> FdwResult {
-        Ok(())
+        unimplemented!("update on foreign table is not supported");
     }
 
     fn end_modify(_ctx: &Context) -> FdwResult {
-        Ok(())
+        unimplemented!("update on foreign table is not supported");
     }
 }
 
-bindings::export!(ExampleFdw with_types_in bindings);
+bindings::export!(HelloWorldFdw with_types_in bindings);
