@@ -88,34 +88,40 @@ impl Guest for HelloWorldFdw {
 
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
-
+    
+        // If we've already processed all ports, return None to stop scanning
         if this.row_cnt >= this.ports_to_scan.len() as i32 {
-            return Ok(None); // No more ports to scan
+            return Ok(None);
         }
-
-        let port = this.ports_to_scan[this.row_cnt as usize];
-        let (http_open, https_open) = this.is_port_open(port);
-
-        for tgt_col in &ctx.get_columns() {
-            match tgt_col.name().as_str() {
-                "port" => {
-                    row.push(Some(&Cell::I64(port as i64)));
+    
+        // Iterate over all ports, probing each one and adding results to rows
+        for port in &this.ports_to_scan {
+            let (http_open, https_open) = this.is_port_open(*port);
+    
+            // Push the results for each port into the row
+            for tgt_col in &ctx.get_columns() {
+                match tgt_col.name().as_str() {
+                    "port" => {
+                        row.push(Some(&Cell::I64(*port as i64)));
+                    }
+                    "http_status" => {
+                        let status = if http_open { "open" } else { "closed" };
+                        row.push(Some(&Cell::String(status.to_string())));
+                    }
+                    "https_status" => {
+                        let status = if https_open { "open" } else { "closed" };
+                        row.push(Some(&Cell::String(status.to_string())));
+                    }
+                    _ => unreachable!(),
                 }
-                "http_status" => {
-                    let status = if http_open { "open" } else { "closed" };
-                    row.push(Some(&Cell::String(status.to_string())));
-                }
-                "https_status" => {
-                    let status = if https_open { "open" } else { "closed" };
-                    row.push(Some(&Cell::String(status.to_string())));
-                }
-                _ => unreachable!(),
             }
+    
+            // Increment the row counter after processing each port
+            this.row_cnt += 1;
         }
-
-        this.row_cnt += 1;
-
-        Ok(Some(0))
+    
+        // After processing all ports, signal to stop further scanning
+        Ok(None)
     }
 
 
