@@ -1,4 +1,4 @@
-package supabase:helloworld-fdw@0.2.2;
+package my-company:github_fdw_quickstart@0.2.3;
 
 world helloworld {
     export supabase:wrappers/routines@0.1.0;

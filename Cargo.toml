@@ -1,6 +1,6 @@
 [package]
 name = "github_fdw_quickstart"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 
 [lib]
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 wit-bindgen-rt = "0.26.0"
 
 [package.metadata.component]
-package = "mycompany:github_fdw_quickstart-fdw"
+package = "mycompany:github_fdw_quickstart"
 
 [package.metadata.component.dependencies]
 
