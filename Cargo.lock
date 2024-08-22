@@ -3,8 +3,8 @@
 version = 3
 
 [[package]]
-name = "helloworld_fdw"
-version = "0.1.0"
+name = "github_fdw_quickstart"
+version = "0.2.8"
 dependencies = [
  "wit-bindgen-rt",
 ]
