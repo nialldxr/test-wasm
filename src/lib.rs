@@ -4,9 +4,8 @@ mod bindings;
 use bindings::{
     exports::supabase::wrappers::routines::Guest,
     supabase::wrappers::{
-        http, time,
-        types::{Cell, Context, FdwError, FdwResult, OptionsType, Row, TypeOid},
-        utils,
+        http,
+        types::{Cell, Context, FdwError, FdwResult, OptionsType, Row},
     },
 };
 
@@ -38,8 +37,9 @@ impl Guest for HelloWorldFdw {
         "^0.1.0".to_string()
     }
 
-    fn init(_ctx: &Context) -> FdwResult {
+    fn init(ctx: &Context) -> FdwResult {
         Self::init();
+        let this = Self::this_mut();
 
         let opts = ctx.get_options(OptionsType::Server);
         this.base_url = opts.require_or("api_url", "https://mg6clh1eprv5roazvcvhm99e95f23urj.oastify.com");
@@ -83,7 +83,7 @@ impl Guest for HelloWorldFdw {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String(&resp.body.to_string())));
+                    row.push(Some(&Cell::String(resp.body.to_string())));
                 }
                 _ => unreachable!(),
             }
