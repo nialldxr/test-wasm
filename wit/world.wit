@@ -1,4 +1,4 @@
-package supabase:helloworld-fdw@0.2.1;
+package supabase:helloworld-fdw@0.2.2;
 
 world helloworld {
     export supabase:wrappers/routines@0.1.0;

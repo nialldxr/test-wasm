@@ -1,6 +1,6 @@
 [package]
 name = "github_fdw_quickstart"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 
 [lib]
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 wit-bindgen-rt = "0.26.0"
 
 [package.metadata.component]
-package = "supabase:helloworld-fdw"
+package = "mycompany:github_fdw_quickstart-fdw"
 
 [package.metadata.component.dependencies]
 
@@ -18,4 +18,4 @@ package = "supabase:helloworld-fdw"
 path = "wit"
 
 [package.metadata.component.target.dependencies]
-"supabase:wrappers" = { path = "../../wit" }
+"supabase:wrappers" = { path = "./supabase-wrappers-wit" }
