@@ -1,5 +1,10 @@
-package my-company:github-fdw-quickstart@0.2.4;
+package my-company:github-fdw-quickstart@0.2.5;
 
 world helloworld {
+    import supabase:wrappers/http@0.1.0;
+    import supabase:wrappers/jwt@0.1.0;
+    import supabase:wrappers/stats@0.1.0;
+    import supabase:wrappers/time@0.1.0;
+    import supabase:wrappers/utils@0.1.0;
     export supabase:wrappers/routines@0.1.0;
 }

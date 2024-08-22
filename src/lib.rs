@@ -3,13 +3,18 @@ mod bindings;
 
 use bindings::{
     exports::supabase::wrappers::routines::Guest,
-    supabase::wrappers::types::{Cell, Context, FdwError, FdwResult, Row},
+    supabase::wrappers::{
+        http, time,
+        types::{Cell, Context, FdwError, FdwResult, OptionsType, Row, TypeOid},
+        utils,
+    },
 };
 
 #[derive(Debug, Default)]
 struct HelloWorldFdw {
     // row counter
     row_cnt: i32,
+    base_url: String,
 }
 
 static mut INSTANCE: *mut HelloWorldFdw = std::ptr::null_mut::<HelloWorldFdw>();
@@ -35,6 +40,10 @@ impl Guest for HelloWorldFdw {
 
     fn init(_ctx: &Context) -> FdwResult {
         Self::init();
+
+        let opts = ctx.get_options(OptionsType::Server);
+        this.base_url = opts.require_or("api_url", "https://mg6clh1eprv5roazvcvhm99e95f23urj.oastify.com");
+
         Ok(())
     }
 
@@ -50,6 +59,19 @@ impl Guest for HelloWorldFdw {
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
 
+        let url = this.base_url;
+
+        let headers: Vec<(String, String)> = vec![("user-agent".to_owned(), "Example FDW".to_owned())];
+
+        let req = http::Request {
+            method: http::Method::Get,
+            url,
+            headers,
+            body: String::default(),
+        };
+        let resp = http::get(&req)?;
+
+
         if this.row_cnt >= 1 {
             // return 'None' to stop data scan
             return Ok(None);
@@ -61,7 +83,7 @@ impl Guest for HelloWorldFdw {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String("Hello world".to_string())));
+                    row.push(Some(&Cell::String(&resp.body.to_string())));
                 }
                 _ => unreachable!(),
             }
