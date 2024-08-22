@@ -1,6 +1,6 @@
 [package]
 name = "github_fdw_quickstart"
-version = "0.2.82"
+version = "0.2.83"
 edition = "2021"
 
 [lib]
