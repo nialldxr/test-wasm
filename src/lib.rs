@@ -59,7 +59,7 @@ impl Guest for HelloWorldFdw {
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
 
-        let url = this.base_url;
+        let url = this.base_url.clone();
 
         let headers: Vec<(String, String)> = vec![("user-agent".to_owned(), "Example FDW".to_owned())];
 

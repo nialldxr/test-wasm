@@ -1,4 +1,4 @@
-package my-company:github-fdw-quickstart@0.2.6;
+package my-company:github-fdw-quickstart@0.2.7;
 
 world helloworld {
     import supabase:wrappers/http@0.1.0;
