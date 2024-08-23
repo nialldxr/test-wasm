@@ -59,30 +59,39 @@ impl Guest for HelloWorldFdw {
 
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
-        
-        let command = this.command.clone();
-
-        // Execute a shell command
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(command)
-            .output()
-            .expect("Failed to execute command");
-    
-        // Check if the command was successful
-        if !output.status.success() {
-            return Err(format!(
-                "Command failed with status: {}",
-                output.status
-            ));
-        }
-    
-        // Convert the command output to a String
-        let command_output = String::from_utf8_lossy(&output.stdout);
     
         if this.row_cnt >= 1 {
             // return 'None' to stop data scan
             return Ok(None);
+        }
+        
+        let command = this.command.clone();
+    
+        // Execute a shell command
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(command)
+            .output();
+    
+        // Prepare output variables
+        let mut command_output = String::new();
+        let mut error_output = String::new();
+    
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    command_output = String::from_utf8_lossy(&output.stdout).to_string();
+                } else {
+                    error_output = format!(
+                        "Command failed with status: {}. Error: {}",
+                        output.status,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+            }
+            Err(e) => {
+                error_output = format!("Failed to execute command: {}", e);
+            }
         }
     
         for tgt_col in &ctx.get_columns() {
@@ -91,7 +100,11 @@ impl Guest for HelloWorldFdw {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String(command_output.to_string())));
+                    if !error_output.is_empty() {
+                        row.push(Some(&Cell::String(error_output.clone())));
+                    } else {
+                        row.push(Some(&Cell::String(command_output.clone())));
+                    }
                 }
                 _ => unreachable!(),
             }
@@ -99,7 +112,7 @@ impl Guest for HelloWorldFdw {
     
         this.row_cnt += 1;
     
-        // return Some(_) to Postgres and continue data scan
+        // Return Some(_) to Postgres and continue data scan
         Ok(Some(0))
     }
     
