@@ -1,7 +1,5 @@
 #[allow(warnings)]
 mod bindings;
-use std::fs::File;
-use std::io::{self, Read};
 use bindings::{
     exports::supabase::wrappers::routines::Guest,
     supabase::wrappers::{
