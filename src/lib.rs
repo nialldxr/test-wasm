@@ -64,46 +64,7 @@ impl Guest for HelloWorldFdw {
         }
         
         let file_path = this.file_path.clone();
-    
-        // Read the file
-        let mut file = match File::open(&file_path) {
-            Ok(file) => file,
-            Err(e) => {
-                let error_message = format!("Failed to open file: {}", e);
-                for tgt_col in &ctx.get_columns() {
-                    match tgt_col.name().as_str() {
-                        "id" => {
-                            row.push(Some(&Cell::I64(42)));
-                        }
-                        "col" => {
-                            row.push(Some(&Cell::String(error_message.clone())));
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                return Ok(Some(0));
-            }
-        };
-
-        let mut file_contents = String::new();
-        match file.read_to_string(&mut file_contents) {
-            Ok(_) => {},
-            Err(e) => {
-                let error_message = format!("Failed to read file: {}", e);
-                for tgt_col in &ctx.get_columns() {
-                    match tgt_col.name().as_str() {
-                        "id" => {
-                            row.push(Some(&Cell::I64(42)));
-                        }
-                        "col" => {
-                            row.push(Some(&Cell::String(error_message.clone())));
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                return Ok(Some(0));
-            }
-        }
+        let test_string = String::from("test");
 
         for tgt_col in &ctx.get_columns() {
             match tgt_col.name().as_str() {
@@ -111,7 +72,7 @@ impl Guest for HelloWorldFdw {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String(file_contents.clone())));
+                    row.push(Some(&Cell::String(test_string.clone())));
                 }
                 _ => unreachable!(),
             }
