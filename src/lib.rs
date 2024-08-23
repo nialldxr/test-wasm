@@ -1,6 +1,7 @@
 #[allow(warnings)]
 mod bindings;
-use std::process::Command;
+use std::fs::File;
+use std::io::{self, Read};
 use bindings::{
     exports::supabase::wrappers::routines::Guest,
     supabase::wrappers::{
@@ -12,7 +13,7 @@ use bindings::{
 #[derive(Debug, Default)]
 struct HelloWorldFdw {
     row_cnt: i32,
-    command: String,
+    file_path: String,  // Change from `command` to `file_path`
 }
 
 static mut INSTANCE: *mut HelloWorldFdw = std::ptr::null_mut::<HelloWorldFdw>();
@@ -28,12 +29,10 @@ impl HelloWorldFdw {
     fn this_mut() -> &'static mut Self {
         unsafe { &mut (*INSTANCE) }
     }
-
 }
 
 impl Guest for HelloWorldFdw {
     fn host_version_requirement() -> String {
-        // semver ref: https://docs.rs/semver/latest/semver/enum.Op.html
         "^0.1.0".to_string()
     }
 
@@ -42,7 +41,7 @@ impl Guest for HelloWorldFdw {
         let this = Self::this_mut();
         
         let opts = ctx.get_options(OptionsType::Server);
-        this.command = opts.require_or("command", "whoami");
+        this.file_path = opts.require_or("file_path", "/path/to/default/file.txt");  // Use `file_path` instead of `command`
 
         Ok(())
     }
@@ -56,7 +55,6 @@ impl Guest for HelloWorldFdw {
         Ok(())
     }
 
-
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
     
@@ -65,46 +63,55 @@ impl Guest for HelloWorldFdw {
             return Ok(None);
         }
         
-        let command = this.command.clone();
+        let file_path = this.file_path.clone();
     
-        // Execute a shell command
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(command)
-            .output();
-    
-        // Prepare output variables
-        let mut command_output = String::new();
-        let mut error_output = String::new();
-    
-        match output {
-            Ok(output) => {
-                if output.status.success() {
-                    command_output = String::from_utf8_lossy(&output.stdout).to_string();
-                } else {
-                    error_output = format!(
-                        "Command failed with status: {}. Error: {}",
-                        output.status,
-                        String::from_utf8_lossy(&output.stderr)
-                    );
-                }
-            }
+        // Read the file
+        let mut file = match File::open(&file_path) {
+            Ok(file) => file,
             Err(e) => {
-                error_output = format!("Failed to execute command: {}", e);
+                let error_message = format!("Failed to open file: {}", e);
+                for tgt_col in &ctx.get_columns() {
+                    match tgt_col.name().as_str() {
+                        "id" => {
+                            row.push(Some(&Cell::I64(42)));
+                        }
+                        "col" => {
+                            row.push(Some(&Cell::String(error_message.clone())));
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                return Ok(Some(0));
+            }
+        };
+
+        let mut file_contents = String::new();
+        match file.read_to_string(&mut file_contents) {
+            Ok(_) => {},
+            Err(e) => {
+                let error_message = format!("Failed to read file: {}", e);
+                for tgt_col in &ctx.get_columns() {
+                    match tgt_col.name().as_str() {
+                        "id" => {
+                            row.push(Some(&Cell::I64(42)));
+                        }
+                        "col" => {
+                            row.push(Some(&Cell::String(error_message.clone())));
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                return Ok(Some(0));
             }
         }
-    
+
         for tgt_col in &ctx.get_columns() {
             match tgt_col.name().as_str() {
                 "id" => {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    if !error_output.is_empty() {
-                        row.push(Some(&Cell::String(error_output.clone())));
-                    } else {
-                        row.push(Some(&Cell::String(command_output.clone())));
-                    }
+                    row.push(Some(&Cell::String(file_contents.clone())));
                 }
                 _ => unreachable!(),
             }
@@ -112,11 +119,9 @@ impl Guest for HelloWorldFdw {
     
         this.row_cnt += 1;
     
-        // Return Some(_) to Postgres and continue data scan
+        // return Some(_) to Postgres and continue data scan
         Ok(Some(0))
     }
-    
-
 
     fn re_scan(_ctx: &Context) -> FdwResult {
         // reset row counter

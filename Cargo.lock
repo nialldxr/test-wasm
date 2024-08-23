@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "github_fdw_quickstart"
-version = "0.2.84"
+version = "0.2.85"
 dependencies = [
  "wit-bindgen-rt",
 ]
