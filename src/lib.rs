@@ -11,7 +11,6 @@ use bindings::{
 #[derive(Debug, Default)]
 struct HelloWorldFdw {
     row_cnt: i32,
-    file_path: String,  // Change from `command` to `file_path`
 }
 
 static mut INSTANCE: *mut HelloWorldFdw = std::ptr::null_mut::<HelloWorldFdw>();
@@ -36,10 +35,6 @@ impl Guest for HelloWorldFdw {
 
     fn init(ctx: &Context) -> FdwResult {
         Self::init();
-        let this = Self::this_mut();
-        
-        let opts = ctx.get_options(OptionsType::Server);
-        this.file_path = opts.require_or("file_path", "/path/to/default/file.txt");  // Use `file_path` instead of `command`
 
         Ok(())
     }
@@ -55,14 +50,11 @@ impl Guest for HelloWorldFdw {
 
     fn iter_scan(ctx: &Context, row: &Row) -> Result<Option<u32>, FdwError> {
         let this = Self::this_mut();
-    
+
         if this.row_cnt >= 1 {
             // return 'None' to stop data scan
             return Ok(None);
         }
-        
-        let file_path = this.file_path.clone();
-        let test_string = String::from("test");
 
         for tgt_col in &ctx.get_columns() {
             match tgt_col.name().as_str() {
@@ -70,14 +62,14 @@ impl Guest for HelloWorldFdw {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String(test_string.clone())));
+                    row.push(Some(&Cell::String("Hello world".to_string())));
                 }
                 _ => unreachable!(),
             }
         }
-    
+
         this.row_cnt += 1;
-    
+
         // return Some(_) to Postgres and continue data scan
         Ok(Some(0))
     }
