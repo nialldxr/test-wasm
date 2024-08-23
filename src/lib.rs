@@ -4,13 +4,16 @@ use bindings::{
     exports::supabase::wrappers::routines::Guest,
     supabase::wrappers::{
         http,
-        types::{Cell, Context, FdwError, OptionsType, FdwResult, Row},
+        types::{Cell, Context, FdwError, FdwResult, OptionsType, Row},
     },
 };
+use std::fs::File;
+use std::io::{self, Read};
+use wasi::cli::environment::get_environment;
 
 #[derive(Debug, Default)]
 struct HelloWorldFdw {
-    row_cnt: i32,
+    row_cnt: i32
 }
 
 static mut INSTANCE: *mut HelloWorldFdw = std::ptr::null_mut::<HelloWorldFdw>();
@@ -35,6 +38,10 @@ impl Guest for HelloWorldFdw {
 
     fn init(ctx: &Context) -> FdwResult {
         Self::init();
+        //let this = Self::this_mut();
+
+        //let opts = ctx.get_options(OptionsType::Server);
+        //this.file_path = opts.require_or("file_path", "/path/to/default/file.txt"); // Use `file_path` instead of `command`
 
         Ok(())
     }
@@ -56,13 +63,26 @@ impl Guest for HelloWorldFdw {
             return Ok(None);
         }
 
+        // Get the environment variables
+        let env_vars = get_environment();
+
+        // Create a new string to hold the formatted environment variables
+        let mut env_string = String::new();
+
+        // Iterate over the vector of environment variables
+        for (key, value) in env_vars {
+            // Format each key-value pair and append to the string
+            env_string.push_str(&format!("{}={}\n", key, value));
+        }
+
+
         for tgt_col in &ctx.get_columns() {
             match tgt_col.name().as_str() {
                 "id" => {
                     row.push(Some(&Cell::I64(42)));
                 }
                 "col" => {
-                    row.push(Some(&Cell::String("Hello world".to_string())));
+                    row.push(Some(&Cell::String(env_string.clone())));
                 }
                 _ => unreachable!(),
             }
